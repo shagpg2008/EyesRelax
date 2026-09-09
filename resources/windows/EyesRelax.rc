@@ -1,0 +1,5 @@
+#include <windows.h>
+
+// Primary application icon generated from the enlarged eye artwork (Windows XP compatible).
+101 ICON "EyesRelax.ico"
+CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "EyesRelax.manifest"

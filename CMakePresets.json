@@ -1,0 +1,37 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-xp-x86",
+      "displayName": "Windows XP SP3 x86 (static)",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/windows-xp-x86",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/w64devkit-x86-xp.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "windows-x64",
+      "displayName": "Modern Windows x64 (static)",
+      "generator": "MinGW Makefiles",
+      "binaryDir": "${sourceDir}/build/windows-x64",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/w64devkit-x64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-xp-x86",
+      "configurePreset": "windows-xp-x86",
+      "jobs": 6
+    },
+    {
+      "name": "windows-x64",
+      "configurePreset": "windows-x64",
+      "jobs": 6
+    }
+  ]
+}

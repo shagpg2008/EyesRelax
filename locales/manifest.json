@@ -1,0 +1,5 @@
+{
+  "defaultLocale": "system",
+  "locales": ["en", "zh-Hans", "zh-Hant", "fr", "ko", "ja", "ru", "de", "bg", "cs", "es", "et", "hr", "it", "pl", "pt-BR", "sl", "tr", "vi"],
+  "aliases": {"zh-CHT": "zh-Hant"}
+}

@@ -1,0 +1,11 @@
+/build*/
+/dist/
+/third_party/wxWidgets
+/.cache/
+*.user
+*.layout
+*.depend
+*.o
+*.obj
+*.exe
+*.dll

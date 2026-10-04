@@ -2,11 +2,14 @@
 
 #include "eyerelax/BreakWindow.hpp"
 #include "eyerelax/IdleTime.hpp"
+#include "eyerelax/PowerControl.hpp"
 #include "eyerelax/SettingsFrame.hpp"
+#include "eyerelax/ShutdownSchedule.hpp"
 #include "eyerelax/TrayIcon.hpp"
 #include "eyerelax/UpcomingBreakWindow.hpp"
 #include <wx/display.h>
 #include <wx/imagpng.h>
+#include <wx/datetime.h>
 #include <wx/snglinst.h>
 
 namespace {
@@ -33,6 +36,12 @@ bool EyesRelaxApp::OnInit() {
     timer_.SetOwner(this);
     Bind(wxEVT_TIMER, &EyesRelaxApp::OnTimer, this);
     timer_.Start(1000);
+    UpdateTrayStatus();
+#ifdef __WXGTK__
+    // GNOME and some other Linux desktops hide legacy tray icons. Always show
+    // a visible window on launch so starting the application has clear feedback.
+    CallAfter([this] { ShowSettings(); });
+#endif
     return true;
 }
 
@@ -50,6 +59,8 @@ void EyesRelaxApp::Reconfigure() {
     localization_.Load(settings_.locale);
     scheduler_->Configure(settings_.shortWorkMinutes, settings_.shortBreaksBeforeLong);
     upcomingBreakShown_ = false;
+    shutdownRequested_ = false;
+    shutdownRetrySeconds_ = 0;
     DismissUpcomingBreak();
     if (wasPaused) scheduler_->Pause(true);
     tray_.reset();
@@ -57,6 +68,7 @@ void EyesRelaxApp::Reconfigure() {
         localization_, [this] { ShowSettings(); }, [this] { TogglePause(); },
         [this] { StartBreak(BreakScheduler::BreakKind::Short); },
         [this] { ExitMainLoop(); }, [this] { return scheduler_->IsPaused(); });
+    UpdateTrayStatus();
 }
 
 void EyesRelaxApp::ShowSettings() {
@@ -82,6 +94,7 @@ void EyesRelaxApp::TogglePause() {
     scheduler_->Pause(pause);
     if (pause) DismissUpcomingBreak();
     if (pause && breakActive_) CloseBreaks(activeBreakKind_);
+    UpdateTrayStatus();
 }
 
 void EyesRelaxApp::StartBreak(BreakScheduler::BreakKind kind) {
@@ -89,6 +102,7 @@ void EyesRelaxApp::StartBreak(BreakScheduler::BreakKind kind) {
     DismissUpcomingBreak();
     breakActive_ = true;
     activeBreakKind_ = kind;
+    UpdateTrayStatus();
     const int seconds = kind == BreakScheduler::BreakKind::Long
                             ? settings_.longBreakSeconds : settings_.shortBreakSeconds;
     const unsigned displays = wxDisplay::GetCount();
@@ -107,6 +121,7 @@ void EyesRelaxApp::CloseBreaks(BreakScheduler::BreakKind kind) {
     breakWindows_.clear();
     scheduler_->Complete(kind);
     upcomingBreakShown_ = false;
+    UpdateTrayStatus();
 }
 
 void EyesRelaxApp::ShowUpcomingBreak() {
@@ -125,8 +140,58 @@ void EyesRelaxApp::DismissUpcomingBreak() {
     window->Destroy();
 }
 
+void EyesRelaxApp::CheckShutdownSchedule() {
+    if (!settings_.shutdownScheduleEnabled) {
+        shutdownRequested_ = false;
+        shutdownRetrySeconds_ = 0;
+        return;
+    }
+    const wxDateTime now = wxDateTime::Now();
+    const int secondsSinceMidnight = now.GetHour() * 3600 + now.GetMinute() * 60 +
+                                     now.GetSecond();
+    const bool inside = IsWithinShutdownWindow(secondsSinceMidnight,
+                                                settings_.shutdownStartSeconds,
+                                                settings_.shutdownEndSeconds);
+    if (!inside) {
+        shutdownRequested_ = false;
+        shutdownRetrySeconds_ = 0;
+        return;
+    }
+    if (shutdownRequested_) return;
+    if (shutdownRetrySeconds_ > 0) {
+        --shutdownRetrySeconds_;
+        return;
+    }
+    if (RequestSystemShutdown()) {
+        shutdownRequested_ = true;
+    } else {
+        shutdownRetrySeconds_ = 60;
+    }
+}
+
+void EyesRelaxApp::UpdateTrayStatus() {
+    if (!tray_) return;
+    wxString status;
+    if (scheduler_->IsPaused()) {
+        status = localization_.Text("tray.paused");
+    } else if (breakActive_) {
+        status = localization_.Text("settings.restingNow");
+    } else if (idleSuspended_) {
+        status = localization_.Text("tray.idle");
+    } else {
+        const long long remaining = scheduler_->Remaining().count();
+        status = localization_.Text("settings.nextBreak") + " " +
+                 wxString::Format("%02lld:%02lld:%02lld", remaining / 3600,
+                                  (remaining / 60) % 60, remaining % 60);
+    }
+    tray_->SetStatus(status);
+}
+
 void EyesRelaxApp::OnTimer(wxTimerEvent&) {
-    if (breakActive_ || scheduler_->IsPaused()) return;
+    UpdateTrayStatus();
+    if (scheduler_->IsPaused()) return;
+    CheckShutdownSchedule();
+    if (breakActive_) return;
     const auto idleTime = GetSystemIdleTime();
     if (idleTime && *idleTime >= kIdleResetThreshold) {
         if (!idleSuspended_) {
@@ -134,6 +199,7 @@ void EyesRelaxApp::OnTimer(wxTimerEvent&) {
             scheduler_->Reset();
             upcomingBreakShown_ = false;
             DismissUpcomingBreak();
+            UpdateTrayStatus();
         }
         return;
     }
@@ -141,6 +207,7 @@ void EyesRelaxApp::OnTimer(wxTimerEvent&) {
         idleSuspended_ = false;
         scheduler_->Reset();
         upcomingBreakShown_ = false;
+        UpdateTrayStatus();
     }
     const long long remaining = scheduler_->Remaining().count();
     if (!upcomingBreakShown_ && remaining > 0 && remaining <= 10) {

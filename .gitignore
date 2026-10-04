@@ -1,6 +1,8 @@
 /build*/
 /dist/
 /third_party/wxWidgets
+/third_party/wxWidgets.extracting
+/third_party/.wxwidgets-extract.lock
 /.cache/
 *.user
 *.layout

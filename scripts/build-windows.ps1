@@ -26,7 +26,8 @@ function Build-WindowsTarget(
     if (-not (Test-Path -LiteralPath $cmake)) {
         $cmake = "cmake"
     }
-    Invoke-Checked $cmake @("--preset", $preset, "-DW64DEVKIT_ROOT=$($toolchainRoot -replace '\\','/')")
+    Invoke-Checked $cmake @("--preset", $preset,
+        "-DW64DEVKIT_ROOT=$($toolchainRoot -replace '\\','/')", "-DwxBUILD_SHARED=OFF")
     Invoke-Checked $cmake @("--build", "--preset", $preset, "--parallel", $Jobs)
 
     $buildDirectory = Join-Path $projectRoot "build\$preset"

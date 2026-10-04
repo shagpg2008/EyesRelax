@@ -89,6 +89,11 @@ Settings Settings::Load() {
     config.Read("locale", &value.locale, "system");
     config.Read("launchAtLogin", &value.launchAtLogin, false);
     config.Read("allowBreakCancel", &value.allowBreakCancel, true);
+    config.Read("shutdownScheduleEnabled", &value.shutdownScheduleEnabled, false);
+    config.Read("shutdownStartSeconds", &value.shutdownStartSeconds, 23 * 60 * 60);
+    config.Read("shutdownEndSeconds", &value.shutdownEndSeconds, 7 * 60 * 60);
+    value.shutdownStartSeconds = std::clamp(value.shutdownStartSeconds, 0, 86399);
+    value.shutdownEndSeconds = std::clamp(value.shutdownEndSeconds, 0, 86399);
     return value;
 }
 
@@ -103,5 +108,8 @@ bool Settings::Save() const {
     config.Write("locale", locale);
     config.Write("launchAtLogin", launchAtLogin);
     config.Write("allowBreakCancel", allowBreakCancel);
+    config.Write("shutdownScheduleEnabled", shutdownScheduleEnabled);
+    config.Write("shutdownStartSeconds", shutdownStartSeconds);
+    config.Write("shutdownEndSeconds", shutdownEndSeconds);
     return config.Flush() && ApplyLaunchAtLogin(launchAtLogin);
 }

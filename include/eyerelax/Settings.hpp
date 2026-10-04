@@ -10,6 +10,9 @@ struct Settings {
     wxString locale{"system"};
     bool launchAtLogin{false};
     bool allowBreakCancel{true};
+    bool shutdownScheduleEnabled{false};
+    int shutdownStartSeconds{23 * 60 * 60};
+    int shutdownEndSeconds{7 * 60 * 60};
 
     static Settings Load();
     bool Save() const;

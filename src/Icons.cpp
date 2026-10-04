@@ -1,4 +1,5 @@
 #include "eyerelax/Icons.hpp"
+#include "eyerelax/ResourcePath.hpp"
 
 #include <wx/bitmap.h>
 #include <wx/dcmemory.h>
@@ -52,9 +53,7 @@ wxIcon CreateFallbackEyeIcon(bool open) {
 } // namespace
 
 wxIcon CreateEyeIcon(bool open) {
-    const wxString path = wxFileName(wxStandardPaths::Get().GetExecutablePath()).GetPath() +
-                          wxFILE_SEP_PATH + "icons" + wxFILE_SEP_PATH +
-                          (open ? "eye-open.png" : "eye-closed.png");
+    const wxString path = ResourcePath(open ? "icons/eye-open.png" : "icons/eye-closed.png");
     wxImage image;
     if (image.LoadFile(path, wxBITMAP_TYPE_PNG)) {
         image.Rescale(kIconSize, kIconSize, wxIMAGE_QUALITY_HIGH);

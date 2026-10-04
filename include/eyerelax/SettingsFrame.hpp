@@ -31,6 +31,13 @@ private:
     wxChoice* locale_{nullptr};
     wxCheckBox* launchAtLogin_{nullptr};
     wxCheckBox* allowBreakCancel_{nullptr};
+    wxCheckBox* shutdownScheduleEnabled_{nullptr};
+    wxSpinCtrl* shutdownStartHour_{nullptr};
+    wxSpinCtrl* shutdownStartMinute_{nullptr};
+    wxSpinCtrl* shutdownStartSecond_{nullptr};
+    wxSpinCtrl* shutdownEndHour_{nullptr};
+    wxSpinCtrl* shutdownEndMinute_{nullptr};
+    wxSpinCtrl* shutdownEndSecond_{nullptr};
     wxStaticText* nextBreak_{nullptr};
     wxTimer refreshTimer_;
 };

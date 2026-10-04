@@ -15,12 +15,12 @@ SettingsFrame::SettingsFrame(Settings& settings, const Localization& t,
                              std::function<void()> onSaved,
                              std::function<long long()> secondsUntilBreak)
     : wxFrame(nullptr, wxID_ANY, t.Text("settings.title"), wxDefaultPosition,
-              wxSize(470, 440)), settings_(settings), localization_(t),
+              wxDefaultSize), settings_(settings), localization_(t),
       onSaved_(std::move(onSaved)), secondsUntilBreak_(std::move(secondsUntilBreak)),
       refreshTimer_(this) {
     SetIcon(CreateEyeIcon(true));
     auto* panel = new wxPanel(this);
-    auto* form = new wxFlexGridSizer(2, 12, 12);
+    auto* form = new wxFlexGridSizer(2, FromDIP(12), FromDIP(12));
     form->AddGrowableCol(1, 1);
     auto addSpin = [&](const wxString& label, int value, int min, int max, wxSpinCtrl*& control) {
         form->Add(new wxStaticText(panel, wxID_ANY, label), 0, wxALIGN_CENTER_VERTICAL);
@@ -34,6 +34,26 @@ SettingsFrame::SettingsFrame(Settings& settings, const Localization& t,
     addSpin(t.Text("settings.longWork"), settings.shortBreaksBeforeLong, 1, 100,
             shortBreaksBeforeLong_);
     addSpin(t.Text("settings.longBreak"), settings.longBreakSeconds, 5, 7200, longBreak_);
+    auto addTime = [&](const wxString& label, int totalSeconds, wxSpinCtrl*& hour,
+                       wxSpinCtrl*& minute, wxSpinCtrl*& second) {
+        form->Add(new wxStaticText(panel, wxID_ANY, label), 0, wxALIGN_CENTER_VERTICAL);
+        auto* time = new wxBoxSizer(wxHORIZONTAL);
+        auto addPart = [&](int value, int maximum, wxSpinCtrl*& control) {
+            control = new wxSpinCtrl(panel, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                                     FromDIP(wxSize(72, -1)));
+            control->SetRange(0, maximum);
+            control->SetValue(value);
+            time->Add(control, 0, wxALIGN_CENTER_VERTICAL);
+        };
+        addPart(totalSeconds / 3600, 23, hour);
+        time->Add(new wxStaticText(panel, wxID_ANY, ":"), 0,
+                  wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(4));
+        addPart((totalSeconds / 60) % 60, 59, minute);
+        time->Add(new wxStaticText(panel, wxID_ANY, ":"), 0,
+                  wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(4));
+        addPart(totalSeconds % 60, 59, second);
+        form->Add(time, 1, wxEXPAND);
+    };
     form->Add(new wxStaticText(panel, wxID_ANY, t.Text("settings.language")), 0,
               wxALIGN_CENTER_VERTICAL);
     wxArrayString choices;
@@ -73,15 +93,40 @@ SettingsFrame::SettingsFrame(Settings& settings, const Localization& t,
     allowBreakCancel_ = new wxCheckBox(panel, wxID_ANY, t.Text("settings.allowCancel"));
     allowBreakCancel_->SetValue(settings.allowBreakCancel);
     form->Add(allowBreakCancel_, 1, wxEXPAND);
+    form->AddSpacer(1);
+    shutdownScheduleEnabled_ = new wxCheckBox(
+        panel, wxID_ANY, t.Text("settings.shutdownEnabled"));
+    shutdownScheduleEnabled_->SetValue(settings.shutdownScheduleEnabled);
+    form->Add(shutdownScheduleEnabled_, 1, wxEXPAND);
+    addTime(t.Text("settings.shutdownStart"), settings.shutdownStartSeconds,
+            shutdownStartHour_, shutdownStartMinute_, shutdownStartSecond_);
+    addTime(t.Text("settings.shutdownEnd"), settings.shutdownEndSeconds,
+            shutdownEndHour_, shutdownEndMinute_, shutdownEndSecond_);
+    auto updateShutdownControls = [this] {
+        const bool enabled = shutdownScheduleEnabled_->GetValue();
+        shutdownStartHour_->Enable(enabled);
+        shutdownStartMinute_->Enable(enabled);
+        shutdownStartSecond_->Enable(enabled);
+        shutdownEndHour_->Enable(enabled);
+        shutdownEndMinute_->Enable(enabled);
+        shutdownEndSecond_->Enable(enabled);
+    };
+    shutdownScheduleEnabled_->Bind(wxEVT_CHECKBOX,
+        [updateShutdownControls](wxCommandEvent&) { updateShutdownControls(); });
+    updateShutdownControls();
     form->Add(new wxStaticText(panel, wxID_ANY, t.Text("settings.nextBreak")), 0,
               wxALIGN_CENTER_VERTICAL);
     nextBreak_ = new wxStaticText(panel, wxID_ANY, wxEmptyString);
     form->Add(nextBreak_, 1, wxEXPAND | wxALIGN_CENTER_VERTICAL);
     auto* save = new wxButton(panel, wxID_SAVE, t.Text("settings.save"));
     auto* root = new wxBoxSizer(wxVERTICAL);
-    root->Add(form, 1, wxEXPAND | wxALL, 24);
-    root->Add(save, 0, wxALIGN_RIGHT | wxLEFT | wxRIGHT | wxBOTTOM, 24);
+    root->SetMinSize(FromDIP(wxSize(432, 448)));
+    root->Add(form, 1, wxEXPAND | wxALL, FromDIP(24));
+    root->Add(save, 0, wxALIGN_RIGHT | wxLEFT | wxRIGHT | wxBOTTOM, FromDIP(24));
     panel->SetSizer(root);
+    auto* outer = new wxBoxSizer(wxVERTICAL);
+    outer->Add(panel, 1, wxEXPAND);
+    SetSizerAndFit(outer);
     save->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
         static const wxString codes[] = {"system", "en", "zh-Hans", "zh-Hant", "fr", "ko",
                                          "ja", "ru", "de", "bg", "cs", "es", "et", "hr",
@@ -93,6 +138,17 @@ SettingsFrame::SettingsFrame(Settings& settings, const Localization& t,
         settings_.locale = codes[locale_->GetSelection()];
         settings_.launchAtLogin = launchAtLogin_->GetValue();
         settings_.allowBreakCancel = allowBreakCancel_->GetValue();
+        settings_.shutdownScheduleEnabled = shutdownScheduleEnabled_->GetValue();
+        settings_.shutdownStartSeconds = shutdownStartHour_->GetValue() * 3600 +
+                                         shutdownStartMinute_->GetValue() * 60 +
+                                         shutdownStartSecond_->GetValue();
+        settings_.shutdownEndSeconds = shutdownEndHour_->GetValue() * 3600 +
+                                       shutdownEndMinute_->GetValue() * 60 +
+                                       shutdownEndSecond_->GetValue();
+        if (settings_.shutdownScheduleEnabled) {
+            settings_.launchAtLogin = true;
+            launchAtLogin_->SetValue(true);
+        }
         settings_.Save();
         if (onSaved_) onSaved_();
         Close();

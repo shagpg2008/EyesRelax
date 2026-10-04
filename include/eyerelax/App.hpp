@@ -29,6 +29,8 @@ private:
     void CloseBreaks(BreakScheduler::BreakKind kind);
     void ShowUpcomingBreak();
     void DismissUpcomingBreak();
+    void CheckShutdownSchedule();
+    void UpdateTrayStatus();
     void OnTimer(wxTimerEvent& event);
 
     Settings settings_;
@@ -43,5 +45,7 @@ private:
     bool breakActive_{false};
     bool upcomingBreakShown_{false};
     bool idleSuspended_{false};
+    bool shutdownRequested_{false};
+    int shutdownRetrySeconds_{0};
     BreakScheduler::BreakKind activeBreakKind_{BreakScheduler::BreakKind::Short};
 };

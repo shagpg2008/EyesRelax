@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=EyesRelax
+Comment=Eye break reminder
+Exec="@EYERELAX_DESKTOP_EXECUTABLE@"
+Icon=@EYERELAX_DESKTOP_ICON@
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+StartupWMClass=EyesRelax

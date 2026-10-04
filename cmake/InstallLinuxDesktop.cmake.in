@@ -1,0 +1,14 @@
+set(install_bindir "@CMAKE_INSTALL_BINDIR@")
+set(install_datadir "@CMAKE_INSTALL_DATADIR@")
+foreach(directory IN ITEMS install_bindir install_datadir)
+    if(NOT IS_ABSOLUTE "${${directory}}")
+        set(${directory} "${CMAKE_INSTALL_PREFIX}/${${directory}}")
+    endif()
+endforeach()
+
+set(EYERELAX_DESKTOP_EXECUTABLE "${install_bindir}/EyesRelax")
+set(EYERELAX_DESKTOP_ICON "${install_datadir}/pixmaps/eyesrelax.png")
+configure_file("@PROJECT_SOURCE_DIR@/resources/linux/EyesRelax.desktop.in"
+    "@PROJECT_BINARY_DIR@/eyesrelax.desktop" @ONLY)
+file(INSTALL "@PROJECT_BINARY_DIR@/eyesrelax.desktop"
+    DESTINATION "${install_datadir}/applications")

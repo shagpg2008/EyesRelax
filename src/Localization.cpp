@@ -1,4 +1,5 @@
 #include "eyerelax/Localization.hpp"
+#include "eyerelax/ResourcePath.hpp"
 
 #include <cctype>
 #include <sstream>
@@ -88,8 +89,7 @@ bool Localization::LoadFile(const wxString& path,
 }
 
 bool Localization::Load(const wxString& requested) {
-    wxString base = wxStandardPaths::Get().GetExecutablePath();
-    base = wxFileName(base).GetPath() + wxFILE_SEP_PATH + "locales" + wxFILE_SEP_PATH;
+    wxString base = wxFileName(ResourcePath("locales/en.json")).GetPath() + wxFILE_SEP_PATH;
     fallback_.clear();
     current_.clear();
     if (!LoadFile(base + "en.json", fallback_)) {
